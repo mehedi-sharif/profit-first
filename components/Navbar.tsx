@@ -19,14 +19,16 @@ export function Navbar() {
 
     return (
         <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-            <div className="container flex h-16 items-center justify-between px-4">
-                {/* Logo */}
-                <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight">
-                    <span className="text-primary">Profit</span>First
-                </Link>
+            <div className="container mx-auto px-4 h-16 grid grid-cols-3 items-center">
+                {/* Logo - Left */}
+                <div className="justify-self-start">
+                    <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tight">
+                        <span className="text-primary">Profit</span>First
+                    </Link>
+                </div>
 
-                {/* Centered Navigation - Desktop */}
-                <div className="hidden md:flex items-center gap-6 absolute left-1/2 transform -translate-x-1/2">
+                {/* Centered Navigation - Center */}
+                <div className="hidden md:flex items-center justify-center gap-6 justify-self-center">
                     {navItems.map((item) => (
                         <Link
                             key={item.href}
@@ -44,8 +46,8 @@ export function Navbar() {
                     ))}
                 </div>
 
-                {/* Action Button */}
-                <div className="flex items-center gap-4">
+                {/* Action Button - Right */}
+                <div className="flex items-center gap-4 justify-self-end">
                     <Button asChild size="sm" className="hidden sm:flex">
                         <Link href="/allocate">
                             <PlusCircle className="mr-2 h-4 w-4" />

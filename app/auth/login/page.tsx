@@ -22,6 +22,7 @@ export default function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError(null);
+        console.log("Attempting login with:", email);
 
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
@@ -29,16 +30,28 @@ export default function LoginPage() {
                 password,
             });
 
+            console.log("Supabase Auth Response:", { data, error });
+
             if (error) throw error;
 
             if (data.session) {
-                router.push("/");
-                router.refresh();
+                console.log("Session found, redirecting...");
+                // Force a hard navigation to ensure cookies are sent to server
+                window.location.href = "/";
+            } else {
+                console.warn("No session returned after login");
             }
         } catch (err: any) {
+            console.error("Login exception:", err);
             setError(err.message || "Failed to sign in");
-        } finally {
             setLoading(false);
+        } finally {
+            // Only set loading false if we didn't redirect (if we redirected, the page will unload)
+            if (!window.location.href.endsWith('/')) {
+                // This check is a bit naive but basically if we are navigating away, we don't care about state
+                // But for safety let's just leave it or remove it. 
+                // Actually if we do window.location.href, the state logic doesn't matter much effectively.
+            }
         }
     };
 

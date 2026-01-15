@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 import { BankAccount } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -35,23 +36,48 @@ export function BankAccountManager() {
         swiftCode: "",
     });
 
-    const handleAddBankAccount = () => {
+    const handleAddBankAccount = async () => {
         if (!newBankAccount.bankName || !newBankAccount.branchName || !newBankAccount.accountNumber) return;
 
-        const bankAccount: BankAccount = {
-            id: crypto.randomUUID(),
-            bankName: newBankAccount.bankName,
-            branchName: newBankAccount.branchName,
-            accountNumber: newBankAccount.accountNumber,
-            accountType: newBankAccount.accountType,
-            routingNumber: newBankAccount.routingNumber || undefined,
-            swiftCode: newBankAccount.swiftCode || undefined,
-            createdAt: new Date().toISOString(),
-        };
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error("User not authenticated");
 
-        addBankAccount(bankAccount);
-        setNewBankAccount({ bankName: "", branchName: "", accountNumber: "", accountType: "Personal", routingNumber: "", swiftCode: "" });
-        setIsAddDialogOpen(false);
+            const id = crypto.randomUUID();
+            const now = new Date().toISOString();
+
+            const bankAccountPayload = {
+                id,
+                user_id: user.id,
+                bank_name: newBankAccount.bankName,
+                branch_name: newBankAccount.branchName,
+                account_number: newBankAccount.accountNumber,
+                account_type: newBankAccount.accountType,
+                routing_number: newBankAccount.routingNumber || null,
+                swift_code: newBankAccount.swiftCode || null,
+            };
+
+            const { error } = await supabase.from("bank_accounts").insert(bankAccountPayload);
+            if (error) throw error;
+
+            // Update local store
+            addBankAccount({
+                id,
+                bankName: newBankAccount.bankName,
+                branchName: newBankAccount.branchName,
+                accountNumber: newBankAccount.accountNumber,
+                accountType: newBankAccount.accountType as "Personal" | "Business",
+                routingNumber: newBankAccount.routingNumber,
+                swiftCode: newBankAccount.swiftCode,
+                createdAt: now,
+            });
+
+            setNewBankAccount({ bankName: "", branchName: "", accountNumber: "", accountType: "Personal", routingNumber: "", swiftCode: "" });
+            setIsAddDialogOpen(false);
+        } catch (error: any) {
+            console.error("Error adding bank account:", error);
+            alert("Failed to add bank account: " + error.message);
+        }
     };
 
     const handleEditClick = (bankAccount: BankAccount) => {
@@ -67,20 +93,41 @@ export function BankAccountManager() {
         setIsEditDialogOpen(true);
     };
 
-    const handleUpdateBankAccount = () => {
+    const handleUpdateBankAccount = async () => {
         if (!selectedBankAccount || !editBankAccount.bankName || !editBankAccount.branchName || !editBankAccount.accountNumber) return;
 
-        updateBankAccount(selectedBankAccount.id, {
-            bankName: editBankAccount.bankName,
-            branchName: editBankAccount.branchName,
-            accountNumber: editBankAccount.accountNumber,
-            accountType: editBankAccount.accountType,
-            routingNumber: editBankAccount.routingNumber || undefined,
-            swiftCode: editBankAccount.swiftCode || undefined,
-        });
+        try {
+            const updates = {
+                bank_name: editBankAccount.bankName,
+                branch_name: editBankAccount.branchName,
+                account_number: editBankAccount.accountNumber,
+                account_type: editBankAccount.accountType,
+                routing_number: editBankAccount.routingNumber || null,
+                swift_code: editBankAccount.swiftCode || null,
+            };
 
-        setIsEditDialogOpen(false);
-        setSelectedBankAccount(null);
+            const { error } = await supabase
+                .from("bank_accounts")
+                .update(updates)
+                .eq("id", selectedBankAccount.id);
+
+            if (error) throw error;
+
+            updateBankAccount(selectedBankAccount.id, {
+                bankName: editBankAccount.bankName,
+                branchName: editBankAccount.branchName,
+                accountNumber: editBankAccount.accountNumber,
+                accountType: editBankAccount.accountType as "Personal" | "Business",
+                routingNumber: editBankAccount.routingNumber,
+                swiftCode: editBankAccount.swiftCode,
+            });
+
+            setIsEditDialogOpen(false);
+            setSelectedBankAccount(null);
+        } catch (error: any) {
+            console.error("Error updating bank account:", error);
+            alert("Failed to update bank account: " + error.message);
+        }
     };
 
     const handleDeleteClick = (bankAccount: BankAccount) => {
@@ -89,13 +136,25 @@ export function BankAccountManager() {
         setIsDeleteDialogOpen(true);
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!selectedBankAccount || deleteConfirmation !== "CONFIRM") return;
 
-        deleteBankAccount(selectedBankAccount.id);
-        setIsDeleteDialogOpen(false);
-        setSelectedBankAccount(null);
-        setDeleteConfirmation("");
+        try {
+            const { error } = await supabase
+                .from("bank_accounts")
+                .delete()
+                .eq("id", selectedBankAccount.id);
+
+            if (error) throw error;
+
+            deleteBankAccount(selectedBankAccount.id);
+            setIsDeleteDialogOpen(false);
+            setSelectedBankAccount(null);
+            setDeleteConfirmation("");
+        } catch (error: any) {
+            console.error("Error deleting bank account:", error);
+            alert("Failed to delete bank account: " + error.message);
+        }
     };
 
     const getLinkedAccount = (bankAccountId: string) => {

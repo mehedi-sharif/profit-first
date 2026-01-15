@@ -54,20 +54,24 @@ export async function middleware(request: NextRequest) {
         }
     )
 
-    const { data: { session } } = await supabase.auth.getSession()
+    const { data: { user } } = await supabase.auth.getUser()
 
     // Public routes that don't require authentication
-    const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/test-supabase']
+    const publicRoutes = ['/auth/login', '/auth/signup', '/auth/callback', '/test-supabase', '/debug-db']
     const isPublicRoute = publicRoutes.some(route => request.nextUrl.pathname.startsWith(route))
 
     // If user is not logged in and trying to access a protected route
-    if (!session && !isPublicRoute) {
-        return NextResponse.redirect(new URL('/auth/login', request.url))
+    if (!user && !isPublicRoute) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/auth/login'
+        return NextResponse.redirect(url)
     }
 
     // If user is logged in and trying to access auth pages, redirect to home
-    if (session && (request.nextUrl.pathname.startsWith('/auth/login') || request.nextUrl.pathname.startsWith('/auth/signup'))) {
-        return NextResponse.redirect(new URL('/', request.url))
+    if (user && (request.nextUrl.pathname.startsWith('/auth/login') || request.nextUrl.pathname.startsWith('/auth/signup'))) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
     }
 
     return response
